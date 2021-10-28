@@ -5,51 +5,33 @@ void ofApp::setup(){
     // uncomment to log to file:
     //ofLogToFile("myLogFile.txt", true);
     
-    ofSetFrameRate(30);
+    ofSetFrameRate(25);
     
     ofSetEscapeQuitsApp(false);
     font.load( OF_TTF_SANS,9,true,true);
     
+    camWidth = 1280;  // try to grab at this size.
+    camHeight = 720;
+    
+    vidGrabber1.setSize(camWidth, camHeight);
+    vidGrabber2.setSize(camWidth, camHeight);
+
     vidGrabber1.setup(0);
     vidGrabber2.setup(1);
     
-    vidGrabber1.setFrameRate(15);
-    vidGrabber2.setFrameRate(15);
+    vidGrabber1.setExposure(-1);
+    vidGrabber2.setExposure(-1);
 
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // IT'S QUITE IMPORTANT
-    // (at least with FLIR/Point Grey cameras)
-    // to use the NATIVE RESOLUTION
-    // or the camera gets super hot and fps drop to 0 very soon
+    
+    vidGrabber1.setPixelFormat(ARV_PIXEL_FORMAT_BAYER_RG_8);
+    vidGrabber2.setPixelFormat(ARV_PIXEL_FORMAT_BAYER_RG_8);
 
-        camWidth = 1288;
-        camHeight = 964;
-        
-        vidGrabber1.setSize(camWidth, camHeight);
-        vidGrabber2.setSize(camWidth, camHeight);
-    
-    // so, now, we're safe!
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    
+    vidGrabber1.setFrameRate(25);
+    vidGrabber2.setFrameRate(25);
 
     SyCam1.setName("Cam1");
     SyCam2.setName("Cam2");
 
-    ofLog() << "width" << ofGetWidth();
-    ofLog() << "height" << ofGetHeight();
-    
-    BCSA.load("bcsa");
-    
-    fbo1.allocate(ofGetWidth()/2, ofGetHeight(), GL_RGB);
-    fbo1.begin();
-    ofClear(0,0,0);
-    fbo1.end();
-
-    fbo2.allocate(ofGetWidth()/2, ofGetHeight(), GL_RGB);
-    fbo2.begin();
-    ofClear(0,0,0);
-    fbo2.end();
-    
     sender.setup("127.0.0.1", PORTOUT);
     ofLog() << "Opened OSC Sender";
     
@@ -59,20 +41,9 @@ void ofApp::setup(){
     getDevices();
     
     //turn off displays
-    displayOI = 0;
+    displayOI = 1;
 
     //set default devices
-    /*
-    vidGrabber1.setDeviceID(2);
-    vidGrabber1.setDesiredFrameRate(15);
-    vidGrabber1.setPixelFormat(OF_PIXELS_NATIVE);
-    vidGrabber1.setup(camWidth, camHeight);
-    
-    vidGrabber2.setDeviceID(0);
-    vidGrabber2.setDesiredFrameRate(15);
-    vidGrabber2.setPixelFormat(OF_PIXELS_NATIVE);
-    vidGrabber2.setup(camWidth, camHeight);
-     */
 
     videoTexture1.allocate(camWidth,camHeight,GL_RGBA);
     videoTexture2.allocate(camWidth,camHeight,GL_RGBA);
@@ -177,37 +148,11 @@ void ofApp::update(){
     if(vidGrabber1.isFrameNew()){
         videoTexture1 = vidGrabber1.getTexture();
         SyCam1.publishTexture(&videoTexture1);
-        fbo1.begin();
-        ofClear(0,0,0);
-        BCSA.begin();
-        BCSA.setUniform3f("avgluma",0.62,0.62,0.62);
-        BCSA.setUniform1f("brightness", BR1);
-        BCSA.setUniform1f("contrast", CO1);
-        BCSA.setUniform1f("saturation", SA1);
-        BCSA.setUniform1f("alpha", 1.);
-        BCSA.setUniformTexture("image", videoTexture1,1);
-        videoTexture1.setAnchorPercent(anchorX1,anchorY1);
-        videoTexture1.draw(fbo1.getWidth()/2,fbo1.getHeight()/2,videoTexture1.getWidth()*zoomX1, videoTexture1.getHeight()*zoomY1);
-        BCSA.end();
-        fbo1.end();
     }
     
     if(vidGrabber2.isFrameNew()){
         videoTexture2 = vidGrabber2.getTexture();
         SyCam2.publishTexture(&videoTexture2);
-        fbo2.begin();
-        ofClear(0,0,0);
-        BCSA.begin();
-        BCSA.setUniform3f("avgluma",0.62,0.62,0.62);
-        BCSA.setUniform1f("brightness", BR2);
-        BCSA.setUniform1f("contrast", CO2);
-        BCSA.setUniform1f("saturation", SA2);
-        BCSA.setUniform1f("alpha", 1.);
-        BCSA.setUniformTexture("image", videoTexture2,1);
-        videoTexture2.setAnchorPercent(anchorX2,anchorY2);
-        videoTexture2.draw(fbo2.getWidth()/2,fbo2.getHeight()/2,videoTexture2.getWidth()*zoomX2,videoTexture2.getHeight()*zoomY2);
-        BCSA.end();
-        fbo2.end();
     }
 }
 
@@ -215,9 +160,8 @@ void ofApp::update(){
 void ofApp::draw(){
     if (displayOI){
         ofSetHexColor(0xffffff);
-        fbo1.draw(0, 0, ofGetWidth()/2, ofGetHeight());
-        fbo2.draw(ofGetWidth()/2, 0, ofGetWidth(), ofGetHeight());
-        // videoTexture.draw(20 + camWidth, 20, camWidth, camHeight);
+        videoTexture1.draw(20 , 20, camWidth, camHeight);
+        videoTexture2.draw(40 + camWidth, 20, camWidth, camHeight);
     }
     font.drawString("fps: " + ofToString((int)ofGetFrameRate()),ofGetWidth()-150,640);
 
@@ -226,7 +170,7 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-    // in fullscreen mode, on a pc at least, the 
+    // in fullscreen mode, on a pc at least, the
     // first time video settings the come up
     // they come up *under* the fullscreen window
     // use alt-tab to navigate to the settings
@@ -261,7 +205,7 @@ void ofApp::getDevices(){
     for(int i = 0; i < devices.size(); i++){
         ofxOscMessage m;
         m.setAddress("/camList");
-        m.addBlobArg(devices[i]);
+        m.addBlobArg(ofBuffer(devices[i].c_str(), devices[i].size()));
         ofLog() << "camera #" << i << ": " << devices[i];
         sender.sendMessage(m);
     }

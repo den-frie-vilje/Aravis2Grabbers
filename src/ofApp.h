@@ -34,7 +34,7 @@ class ofApp : public ofBaseApp{
         ofFbo fbo1, fbo2;
         ofShader BCSA;
         int camWidth, camHeight;
-        float zoomX1, zoomX2, zoomY1, zoomY2, anchorX1, anchorX2, anchorY1, anchorY2, BR1{1}, BR2{1}, CO1{1}, CO2{1}, SA1{1}, SA2{1};
+        float zoomX1{1}, zoomX2{1}, zoomY1{1}, zoomY2{1}, anchorX1, anchorX2, anchorY1, anchorY2, BR1{1}, BR2{1}, CO1{1}, CO2{1}, SA1{1}, SA2{1};
         bool displayOI{false};
     
         ofxOscSender sender;
@@ -43,4 +43,3 @@ class ofApp : public ofBaseApp{
         ofxSyphonServer SyCam1, SyCam2;
 
 };
-
